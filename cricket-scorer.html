@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Turf Scorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: clamp(20px, 5vw, 24px);
+        }
+
+        .setup-screen, .scoring-screen {
+            display: none;
+        }
+
+        .setup-screen.active, .scoring-screen.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: clamp(14px, 3.5vw, 16px);
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px; /* Fixed at 16px to prevent zoom on iOS */
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: clamp(16px, 4vw, 18px);
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            background: #5568d3;
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #f39c12;
+        }
+
+        .btn-secondary:active {
+            background: #e67e22;
+        }
+
+        .coin-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            margin: 20px 0;
+        }
+
+        .coin {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #ffd700, #ffed4e);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 700;
+            color: #8b4513;
+            cursor: pointer;
+            transition: transform 0.1s;
+            border: 4px solid #daa520;
+        }
+
+        .coin:active {
+            transform: scale(0.95);
+        }
+
+        .coin.flipping {
+            animation: flip 1s ease-in-out;
+        }
+
+        @keyframes flip {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(1800deg); }
+        }
+
+        .toss-result {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin-top: 20px;
+            min-height: 30px;
+        }
+
+        .scoreboard {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .team-score {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .team-name {
+            font-weight: 700;
+            font-size: clamp(16px, 4vw, 18px);
+            color: #333;
+        }
+
+        .score {
+            font-size: clamp(24px, 6vw, 28px);
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .over-info {
+            text-align: center;
+            font-size: clamp(14px, 3.5vw, 16px);
+            color: #666;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .edit-overs-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: clamp(11px, 2.5vw, 12px);
+            cursor: pointer;
+            font-weight: 600;
+            touch-action: manipulation;
+        }
+
+        .edit-overs-btn:active {
+            background: #5568d3;
+        }
+
+        .target-info {
+            text-align: center;
+            font-size: clamp(12px, 3vw, 14px);
+            color: #e74c3c;
+            font-weight: 600;
+            margin-top: 5px;
+            padding: 5px;
+        }
+
+        .super-over-indicator {
+            text-align: center;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            font-weight: 700;
+            font-size: clamp(14px, 3.5vw, 16px);
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .overs-history {
+            background: white;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .overs-history h3 {
+            margin-bottom: 8px;
+            color: #333;
+            font-size: clamp(14px, 3.5vw, 16px);
+        }
+
+        .over-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .over-label-outside {
+            font-weight: 700;
+            color: #667eea;
+            font-size: clamp(12px, 3vw, 14px);
+            margin-bottom: 5px;
+            margin-top: 8px;
+        }
+
+        .over-number {
+            display: none; /* Hide the old over number inside the card */
+        }
+
+        .over-balls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .over-total {
+            display: none; /* Not used anymore, total is in the label */
+        }
+
+        .current-over {
+            background: white;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .current-over h3 {
+            margin-bottom: 8px;
+            color: #333;
+            font-size: clamp(14px, 3.5vw, 16px);
+        }
+
+        .balls-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 40px;
+        }
+
+        .ball {
+            width: clamp(35px, 9vw, 40px);
+            height: clamp(35px, 9vw, 40px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: clamp(12px, 3vw, 14px);
+            cursor: pointer;
+            position: relative;
+            touch-action: manipulation;
+            flex-shrink: 0;
+        }
+
+        .ball.runs {
+            background: #3498db;
+            color: white;
+        }
+
+        .ball.wicket {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .ball.extra {
+            background: #f39c12;
+            color: white;
+        }
+
+        .ball:active {
+            opacity: 0.7;
+            transform: scale(0.95);
+        }
+
+        .score-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        @media (min-width: 400px) {
+            .score-buttons {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .score-btn {
+            padding: clamp(16px, 4vw, 20px);
+            border: none;
+            border-radius: 10px;
+            font-size: clamp(18px, 4.5vw, 20px);
+            font-weight: 700;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.1s;
+            touch-action: manipulation;
+            min-height: 50px;
+        }
+
+        .score-btn:active {
+            transform: scale(0.95);
+        }
+
+        .score-btn.runs-0 { background: #95a5a6; }
+        .score-btn.runs-1 { background: #3498db; }
+        .score-btn.runs-2 { background: #2ecc71; }
+        .score-btn.runs-3 { background: #1abc9c; }
+        .score-btn.runs-4 { background: #9b59b6; }
+        .score-btn.runs-6 { background: #e67e22; }
+        .score-btn.wicket { background: #e74c3c; }
+        .score-btn.wide { background: #f39c12; }
+        .score-btn.noball { background: #d35400; }
+
+        .action-buttons {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            background: white;
+            border-top: 2px solid #e0e0e0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .action-btn {
+            padding: 16px;
+            border: none;
+            border-right: 1px solid #e0e0e0;
+            background: white;
+            color: #667eea;
+            border-radius: 0;
+            font-size: clamp(14px, 3.5vw, 16px);
+            font-weight: 600;
+            cursor: pointer;
+            touch-action: manipulation;
+            min-height: 56px;
+        }
+
+        .action-btn:last-child {
+            border-right: none;
+        }
+
+        .action-btn:active {
+            background: #f0f0f0;
+        }
+
+        /* Add padding to bottom of scoring screen for fixed footer */
+        .scoring-screen {
+            padding-bottom: 70px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: clamp(20px, 5vw, 30px);
+            border-radius: 15px;
+            max-width: 90%;
+            width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h3 {
+            font-size: clamp(16px, 4vw, 18px);
+            margin-bottom: 15px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .innings-complete {
+            text-align: center;
+            padding: 15px;
+            background: #d4edda;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .innings-complete h2 {
+            color: #155724;
+            margin-bottom: 10px;
+            font-size: clamp(16px, 4vw, 18px);
+        }
+
+        /* Improve scrolling on iOS */
+        .overs-history {
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Prevent text selection on buttons */
+        .btn, .score-btn, .action-btn, .ball {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏏 Turf Scorer</h1>
+
+        <!-- Setup Screen -->
+        <div class="setup-screen active" id="setupScreen">
+            <div class="form-group">
+                <label>Team 1 Name (Optional)</label>
+                <input type="text" id="team1Name" placeholder="Team 1">
+            </div>
+            <div class="form-group">
+                <label>Team 2 Name (Optional)</label>
+                <input type="text" id="team2Name" placeholder="Team 2">
+            </div>
+            <div class="form-group">
+                <label>Total Overs *</label>
+                <input type="number" id="totalOvers" placeholder="Enter total overs" min="1" required>
+            </div>
+            <button class="btn" onclick="startMatch()">Start Match</button>
+            <button class="btn btn-secondary" onclick="openTossModal()">🪙 Flip a Coin</button>
+        </div>
+
+        <!-- Scoring Screen -->
+        <div class="scoring-screen" id="scoringScreen">
+            <!-- Scoreboard -->
+            <div class="scoreboard">
+                <div class="super-over-indicator" id="superOverIndicator" style="display:none;">
+                    🔥 SUPER OVER 🔥
+                </div>
+                <div class="team-score">
+                    <span class="team-name" id="currentTeamName">Team 1</span>
+                    <span class="score" id="currentScore">0/0</span>
+                </div>
+                <div class="over-info">
+                    <span>Overs: <strong id="oversCompleted">0.0</strong> / <strong id="totalOversDisplay">0</strong></span>
+                    <button class="edit-overs-btn" id="editOversBtn" onclick="editTotalOvers()">✏️ Edit</button>
+                </div>
+                <div class="target-info" id="targetInfo" style="display:none;">
+                    Target: <strong id="targetScore">0</strong> | Need <strong id="runsNeeded">0</strong> runs from <strong id="ballsRemaining">0</strong> balls
+                </div>
+            </div>
+
+            <!-- Overs History -->
+            <div class="overs-history" id="oversHistory" style="display:none;">
+                <h3>Completed Overs</h3>
+                <div id="oversHistoryDisplay"></div>
+            </div>
+
+            <!-- Current Over -->
+            <div class="current-over">
+                <h3>Current Over</h3>
+                <div class="balls-display" id="ballsDisplay"></div>
+            </div>
+
+            <!-- Score Buttons -->
+            <div class="score-buttons">
+                <button class="score-btn runs-0" onclick="recordBall(0, 'runs')">0</button>
+                <button class="score-btn runs-1" onclick="recordBall(1, 'runs')">1</button>
+                <button class="score-btn runs-2" onclick="recordBall(2, 'runs')">2</button>
+                <button class="score-btn runs-3" onclick="recordBall(3, 'runs')">3</button>
+                <button class="score-btn runs-4" onclick="recordBall(4, 'runs')">4</button>
+                <button class="score-btn runs-6" onclick="recordBall(6, 'runs')">6</button>
+                <button class="score-btn wicket" onclick="recordBall(0, 'wicket')">W</button>
+                <button class="score-btn wide" onclick="recordWide()">WD</button>
+                <button class="score-btn noball" onclick="openNoBallModal()">NB</button>
+            </div>
+        </div>
+
+        <!-- Action Buttons - Fixed Footer -->
+        <div class="action-buttons">
+            <button class="action-btn" onclick="undoLastBall()">↶ Undo</button>
+            <button class="action-btn" id="footerEndInningsBtn" onclick="handleEndInnings()">🏁 End Innings</button>
+        </div>
+    </div>
+
+    <!-- No Ball Modal -->
+    <div class="modal" id="noBallModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 15px;">No Ball - Runs Scored?</h3>
+            <div class="score-buttons">
+                <button class="score-btn runs-0" onclick="recordNoBall(0)">0</button>
+                <button class="score-btn runs-1" onclick="recordNoBall(1)">1</button>
+                <button class="score-btn runs-2" onclick="recordNoBall(2)">2</button>
+                <button class="score-btn runs-3" onclick="recordNoBall(3)">3</button>
+                <button class="score-btn runs-4" onclick="recordNoBall(4)">4</button>
+                <button class="score-btn runs-6" onclick="recordNoBall(6)">6</button>
+            </div>
+            <button class="btn" style="margin-top: 15px;" onclick="closeNoBallModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Target Modal -->
+    <div class="modal" id="targetModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 15px;">First Innings Complete!</h3>
+            <p style="margin-bottom: 15px;" id="inningsResult"></p>
+            <button class="btn" onclick="startSecondInnings()">Start 2nd Innings</button>
+        </div>
+    </div>
+
+    <!-- Match Complete Modal -->
+    <div class="modal" id="matchCompleteModal">
+        <div class="modal-content">
+            <h2 style="text-align: center; margin-bottom: 20px; color: #667eea;">🏆 Match Complete!</h2>
+            
+            <!-- Match Summary -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                <div style="margin-bottom: 12px;">
+                    <div style="font-weight: 700; color: #333; margin-bottom: 5px;" id="team1Summary"></div>
+                    <div style="font-size: 24px; font-weight: 700; color: #667eea;" id="team1Score"></div>
+                </div>
+                <div style="border-top: 2px solid #ddd; padding-top: 12px;">
+                    <div style="font-weight: 700; color: #333; margin-bottom: 5px;" id="team2Summary"></div>
+                    <div style="font-size: 24px; font-weight: 700; color: #667eea;" id="team2Score"></div>
+                </div>
+            </div>
+            
+            <!-- Result -->
+            <div style="background: #d4edda; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <p style="text-align: center; font-size: 18px; font-weight: 700; color: #155724; margin: 0;" id="matchResult"></p>
+            </div>
+            
+            <button class="btn" onclick="resetMatch()">New Match</button>
+        </div>
+    </div>
+
+    <!-- End Innings Confirmation Modal -->
+    <div class="modal" id="endInningsModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 15px; text-align: center;">End First Innings?</h3>
+            <p style="margin-bottom: 20px; text-align: center; color: #666;" id="endInningsInfo"></p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="btn" style="background: #95a5a6;" onclick="closeEndInningsModal()">Cancel</button>
+                <button class="btn" onclick="endFirstInnings()">Yes, End Innings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Overs Modal -->
+    <div class="modal" id="editOversModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 15px; text-align: center;">Edit Total Overs</h3>
+            <div class="form-group">
+                <label>New Total Overs</label>
+                <input type="number" id="newTotalOvers" placeholder="Enter new total overs" min="1">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                <button class="btn" style="background: #95a5a6;" onclick="closeEditOversModal()">Cancel</button>
+                <button class="btn" onclick="updateTotalOvers()">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Super Over Modal -->
+    <div class="modal" id="superOverModal">
+        <div class="modal-content">
+            <h2 style="text-align: center; margin-bottom: 15px; color: #e74c3c;">🔥 SUPER OVER!</h2>
+            <p style="text-align: center; margin-bottom: 20px; font-size: 16px; color: #666;">
+                Match is tied! Super Over will decide the winner.<br>
+                Each team gets 1 over (6 balls) to score maximum runs.
+            </p>
+            <button class="btn" onclick="startSuperOver()">Start Super Over</button>
+        </div>
+    </div>
+
+    <!-- Coin Toss Modal -->
+    <div class="modal" id="coinTossModal">
+        <div class="modal-content">
+            <h2 style="text-align: center; margin-bottom: 15px; color: #667eea;">🪙 Coin Toss</h2>
+            <p style="text-align: center; margin-bottom: 20px; color: #666;">Tap the coin to toss!</p>
+            
+            <div class="coin-container">
+                <div class="coin" id="coin" onclick="tossCoin()">
+                    🪙
+                </div>
+            </div>
+            
+            <div class="toss-result" id="tossResult"></div>
+            
+            <button class="btn" style="margin-top: 20px;" onclick="closeTossModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let matchData = {
+            team1: '',
+            team2: '',
+            totalOvers: 0,
+            currentInnings: 1,
+            runs: 0,
+            wickets: 0,
+            balls: 0,
+            currentOver: [],
+            allOvers: [],
+            target: 0,
+            firstInningsRuns: 0,
+            firstInningsWickets: 0,
+            firstInningsOvers: [],
+            isSuperOver: false,
+            superOverTeam1Runs: 0,
+            superOverTeam2Runs: 0,
+            mainMatchTeam1Runs: 0,
+            mainMatchTeam2Runs: 0,
+            mainMatchTeam1Wickets: 0,
+            mainMatchTeam2Wickets: 0
+        };
+
+        function startMatch() {
+            const team1 = document.getElementById('team1Name').value.trim() || 'Team 1';
+            const team2 = document.getElementById('team2Name').value.trim() || 'Team 2';
+            const overs = parseInt(document.getElementById('totalOvers').value);
+
+            if (!overs || overs < 1) {
+                alert('Please enter total overs');
+                return;
+            }
+
+            matchData.team1 = team1;
+            matchData.team2 = team2;
+            matchData.totalOvers = overs;
+
+            document.getElementById('setupScreen').classList.remove('active');
+            document.getElementById('scoringScreen').classList.add('active');
+            document.getElementById('totalOversDisplay').textContent = overs;
+            document.getElementById('currentTeamName').textContent = team1;
+            
+            updateDisplay();
+        }
+
+        function handleEndInnings() {
+            if (matchData.isSuperOver) {
+                // In super over, end current innings
+                endSuperOverInnings();
+            } else if (matchData.currentInnings === 1) {
+                // First innings - confirm and start second innings
+                confirmEndInnings();
+            } else {
+                // Second innings - end match with current score
+                endSecondInnings();
+            }
+        }
+
+        function confirmEndInnings() {
+            const completedOvers = Math.floor(matchData.balls / 6);
+            const ballsInOver = matchData.balls % 6;
+            const oversText = ballsInOver > 0 ? `${completedOvers}.${ballsInOver}` : completedOvers;
+            
+            document.getElementById('endInningsInfo').textContent = 
+                `Current Score: ${matchData.runs}/${matchData.wickets} (${oversText} overs)`;
+            document.getElementById('endInningsModal').classList.add('active');
+        }
+
+        function endSecondInnings() {
+            // Second innings ended - determine winner
+            const completedOvers = Math.floor(matchData.balls / 6);
+            const ballsInOver = matchData.balls % 6;
+            const oversText = ballsInOver > 0 ? `${completedOvers}.${ballsInOver}` : completedOvers;
+            
+            document.getElementById('endInningsInfo').textContent = 
+                `Current Score: ${matchData.runs}/${matchData.wickets} (${oversText} overs)\n\nEnd match and calculate result?`;
+            
+            // Update modal to show end match confirmation
+            const modal = document.getElementById('endInningsModal');
+            modal.querySelector('h3').textContent = 'End Match?';
+            modal.querySelector('.btn:last-child').textContent = 'Yes, End Match';
+            modal.querySelector('.btn:last-child').onclick = function() {
+                closeEndInningsModal();
+                // Reset modal text for future use
+                modal.querySelector('h3').textContent = 'End First Innings?';
+                modal.querySelector('.btn:last-child').textContent = 'Yes, End Innings';
+                modal.querySelector('.btn:last-child').onclick = endFirstInnings;
+                
+                checkMatchResult();
+            };
+            
+            modal.classList.add('active');
+        }
+
+        function checkMatchResult() {
+            if (matchData.runs > matchData.target) {
+                // Team 2 won
+                showMatchComplete();
+            } else if (matchData.runs === matchData.target) {
+                // Tied - offer super over
+                document.getElementById('superOverModal').classList.add('active');
+            } else {
+                // Team 1 won
+                showMatchComplete();
+            }
+        }
+
+        function closeEndInningsModal() {
+            document.getElementById('endInningsModal').classList.remove('active');
+        }
+
+        function endFirstInnings() {
+            closeEndInningsModal();
+            
+            matchData.firstInningsRuns = matchData.runs;
+            matchData.firstInningsWickets = matchData.wickets; // Store first innings wickets
+            matchData.target = matchData.runs;
+            
+            const completedOvers = Math.floor(matchData.balls / 6);
+            const ballsInOver = matchData.balls % 6;
+            const oversText = ballsInOver > 0 ? `${completedOvers}.${ballsInOver}` : completedOvers;
+            
+            const result = `${matchData.team1}: ${matchData.runs}/${matchData.wickets} (${oversText} overs)`;
+            document.getElementById('inningsResult').textContent = result;
+            document.getElementById('targetModal').classList.add('active');
+        }
+
+        function editTotalOvers() {
+            document.getElementById('newTotalOvers').value = matchData.totalOvers;
+            document.getElementById('editOversModal').classList.add('active');
+        }
+
+        function closeEditOversModal() {
+            document.getElementById('editOversModal').classList.remove('active');
+        }
+
+        function updateTotalOvers() {
+            const newOvers = parseInt(document.getElementById('newTotalOvers').value);
+            
+            if (!newOvers || newOvers < 1) {
+                alert('Please enter a valid number of overs');
+                return;
+            }
+
+            matchData.totalOvers = newOvers;
+            document.getElementById('totalOversDisplay').textContent = newOvers;
+            closeEditOversModal();
+            updateDisplay();
+        }
+
+        function startSuperOver() {
+            document.getElementById('superOverModal').classList.remove('active');
+            
+            // Store main match data for final summary
+            matchData.mainMatchTeam1Runs = matchData.firstInningsRuns;
+            matchData.mainMatchTeam2Runs = matchData.runs;
+            matchData.mainMatchTeam1Wickets = matchData.firstInningsWickets;
+            matchData.mainMatchTeam2Wickets = matchData.wickets;
+            
+            // Store original team names
+            const originalTeam1 = matchData.team1;
+            const originalTeam2 = matchData.team2;
+            
+            // SWAP TEAMS - Team that batted second in main match bats first in super over
+            matchData.team1 = originalTeam2; // Team 2 bats first in super over
+            matchData.team2 = originalTeam1; // Team 1 bats second in super over
+            
+            // Completely reset as a fresh match
+            matchData.isSuperOver = true;
+            matchData.currentInnings = 1;
+            matchData.runs = 0;
+            matchData.wickets = 0;
+            matchData.balls = 0;
+            matchData.currentOver = [];
+            matchData.allOvers = [];
+            matchData.firstInningsOvers = [];
+            matchData.totalOvers = 1; // Fixed at 1 over
+            matchData.target = 0;
+            matchData.firstInningsRuns = 0;
+            matchData.firstInningsWickets = 0;
+            
+            // Update UI
+            document.getElementById('currentTeamName').textContent = matchData.team1;
+            document.getElementById('totalOversDisplay').textContent = '1';
+            document.getElementById('targetInfo').style.display = 'none';
+            document.getElementById('oversHistory').style.display = 'none';
+            document.getElementById('editOversBtn').style.display = 'none'; // Hide edit button
+            document.getElementById('superOverIndicator').style.display = 'block';
+            
+            updateDisplay();
+        }
+
+        function startSuperOverSecondInnings() {
+            // Store first super over innings runs
+            matchData.firstInningsRuns = matchData.runs;
+            matchData.firstInningsWickets = matchData.wickets;
+            
+            matchData.currentInnings = 2;
+            matchData.target = matchData.runs; // Target is what team 1 scored
+            matchData.runs = 0;
+            matchData.wickets = 0;
+            matchData.balls = 0;
+            matchData.currentOver = [];
+            
+            document.getElementById('currentTeamName').textContent = matchData.team2;
+            document.getElementById('targetInfo').style.display = 'block';
+            document.getElementById('targetScore').textContent = matchData.target + 1;
+            
+            updateDisplay();
+        }
+
+        function endSuperOverInnings() {
+            if (matchData.currentInnings === 1) {
+                // End first super over innings
+                const modal = document.getElementById('endInningsModal');
+                document.getElementById('endInningsInfo').textContent = 
+                    `${matchData.team1}: ${matchData.runs} runs\n\nStart ${matchData.team2}'s super over?`;
+                modal.querySelector('h3').textContent = 'End Super Over Innings?';
+                modal.querySelector('.btn:last-child').textContent = 'Yes, Continue';
+                modal.querySelector('.btn:last-child').onclick = function() {
+                    closeEndInningsModal();
+                    // Reset modal
+                    modal.querySelector('h3').textContent = 'End First Innings?';
+                    modal.querySelector('.btn:last-child').textContent = 'Yes, End Innings';
+                    modal.querySelector('.btn:last-child').onclick = endFirstInnings;
+                    
+                    startSuperOverSecondInnings();
+                };
+                modal.classList.add('active');
+            } else {
+                // End second super over innings
+                matchData.superOverTeam2Runs = matchData.runs;
+                matchData.superOverTeam1Runs = matchData.firstInningsRuns;
+                showSuperOverResult();
+            }
+        }
+
+        function showSuperOverResult() {
+            // Remember: In super over, team1 = original team2, team2 = original team1 (swapped)
+            // superOverTeam1Runs = what team1 (original team2) scored
+            // superOverTeam2Runs = what team2 (original team1) scored
+            
+            // Determine super over winner
+            let superOverWinner = '';
+            if (matchData.superOverTeam2Runs > matchData.superOverTeam1Runs) {
+                superOverWinner = matchData.team2; // This is original team1
+            } else if (matchData.superOverTeam1Runs > matchData.superOverTeam2Runs) {
+                superOverWinner = matchData.team1; // This is original team2
+            } else {
+                // Super over also tied
+                superOverWinner = 'Match Tied (Super Over also tied)';
+            }
+            
+            // Display in ORIGINAL team order (Team1 from main match first)
+            // matchData.team2 in super over = original team1
+            // matchData.team1 in super over = original team2
+            
+            document.getElementById('team1Summary').textContent = matchData.team2; // Original Team 1
+            document.getElementById('team2Summary').textContent = matchData.team1; // Original Team 2
+            
+            document.getElementById('team1Score').innerHTML = 
+                `Main: ${matchData.mainMatchTeam1Runs}/${matchData.mainMatchTeam1Wickets}<br>Super Over: ${matchData.superOverTeam2Runs}`;
+            document.getElementById('team2Score').innerHTML = 
+                `Main: ${matchData.mainMatchTeam2Runs}/${matchData.mainMatchTeam2Wickets}<br>Super Over: ${matchData.superOverTeam1Runs}`;
+            
+            if (superOverWinner.includes('Tied')) {
+                document.getElementById('matchResult').textContent = superOverWinner;
+            } else {
+                document.getElementById('matchResult').textContent = `${superOverWinner} won the Super Over!`;
+            }
+            
+            document.getElementById('matchCompleteModal').classList.add('active');
+        }
+
+        function recordBall(runs, type) {
+            const ball = {
+                runs: runs,
+                type: type
+            };
+
+            matchData.currentOver.push(ball);
+            matchData.runs += runs;
+            
+            if (type === 'wicket') {
+                matchData.wickets++;
+            }
+
+            if (type === 'runs' || type === 'wicket') {
+                matchData.balls++;
+            }
+
+            updateDisplay();
+            checkOverComplete();
+            checkInningsComplete();
+        }
+
+        function recordWide() {
+            const ball = {
+                runs: 1,
+                type: 'wide'
+            };
+            matchData.currentOver.push(ball);
+            matchData.runs += 1;
+            updateDisplay();
+            checkInningsComplete();
+        }
+
+        function openNoBallModal() {
+            document.getElementById('noBallModal').classList.add('active');
+        }
+
+        function closeNoBallModal() {
+            document.getElementById('noBallModal').classList.remove('active');
+        }
+
+        function recordNoBall(runs) {
+            const ball = {
+                runs: runs + 1,
+                runsScored: runs, // Store runs scored separately for display
+                type: 'noball'
+            };
+            matchData.currentOver.push(ball);
+            matchData.runs += (runs + 1);
+            updateDisplay();
+            closeNoBallModal();
+            checkInningsComplete();
+        }
+
+        function undoLastBall() {
+            if (matchData.currentOver.length === 0 && matchData.allOvers.length === 0) {
+                return;
+            }
+
+            let lastBall;
+            
+            if (matchData.currentOver.length > 0) {
+                // Undo from current over
+                lastBall = matchData.currentOver.pop();
+                
+                // Revert the score
+                matchData.runs -= lastBall.runs;
+                
+                if (lastBall.type === 'wicket') {
+                    matchData.wickets--;
+                }
+
+                // Adjust ball count
+                if (lastBall.type === 'runs' || lastBall.type === 'wicket') {
+                    matchData.balls--;
+                }
+            } else {
+                // Undo from last completed over
+                const lastCompletedOver = matchData.allOvers.pop();
+                
+                // Remove the last ball from that over
+                lastBall = lastCompletedOver.pop();
+                
+                // Put the remaining balls back into current over
+                matchData.currentOver = lastCompletedOver;
+                
+                // Revert the score
+                matchData.runs -= lastBall.runs;
+                
+                if (lastBall.type === 'wicket') {
+                    matchData.wickets--;
+                }
+
+                // Recalculate total balls from scratch based on current over
+                // Count legal balls in current over after undo
+                let legalBallsInCurrentOver = 0;
+                matchData.currentOver.forEach(ball => {
+                    if (ball.type === 'runs' || ball.type === 'wicket') {
+                        legalBallsInCurrentOver++;
+                    }
+                });
+                
+                // Total balls = (completed overs * 6) + legal balls in current over
+                matchData.balls = (matchData.allOvers.length * 6) + legalBallsInCurrentOver;
+            }
+
+            updateDisplay();
+        }
+
+        function checkOverComplete() {
+            const ballsInOver = matchData.currentOver.filter(b => 
+                b.type === 'runs' || b.type === 'wicket'
+            ).length;
+
+            if (ballsInOver === 6) {
+                matchData.allOvers.push([...matchData.currentOver]);
+                matchData.currentOver = [];
+                updateDisplay(); // Immediately update display to show completed over and empty current over
+            }
+        }
+
+        function checkInningsComplete() {
+            const totalBalls = matchData.balls;
+            const maxBalls = matchData.isSuperOver ? 6 : matchData.totalOvers * 6;
+
+            if (matchData.currentInnings === 2 && matchData.runs > matchData.target) {
+                if (matchData.isSuperOver) {
+                    // Super over won - store second innings runs and show result
+                    matchData.superOverTeam2Runs = matchData.runs;
+                    matchData.superOverTeam1Runs = matchData.firstInningsRuns;
+                    showSuperOverResult();
+                } else {
+                    showMatchComplete();
+                }
+                return;
+            }
+
+            if (totalBalls >= maxBalls) {
+                if (matchData.isSuperOver) {
+                    // Super over innings complete
+                    if (matchData.currentInnings === 1) {
+                        // First super over innings done - start second innings
+                        startSuperOverSecondInnings();
+                    } else {
+                        // Both super over innings done - store runs and show result
+                        matchData.superOverTeam2Runs = matchData.runs;
+                        matchData.superOverTeam1Runs = matchData.firstInningsRuns;
+                        showSuperOverResult();
+                    }
+                } else if (matchData.currentInnings === 1) {
+                    showTargetModal();
+                } else {
+                    // Second innings complete - check for tie
+                    checkMatchResult();
+                }
+            }
+        }
+
+        function showTargetModal() {
+            matchData.firstInningsRuns = matchData.runs;
+            matchData.firstInningsWickets = matchData.wickets; // Store first innings wickets
+            matchData.target = matchData.runs;
+            
+            const result = `${matchData.team1}: ${matchData.runs}/${matchData.wickets} (${matchData.totalOvers} overs)`;
+            document.getElementById('inningsResult').textContent = result;
+            document.getElementById('targetModal').classList.add('active');
+        }
+
+        function startSecondInnings() {
+            document.getElementById('targetModal').classList.remove('active');
+            
+            // Save first innings data
+            const firstInningsOvers = [...matchData.allOvers];
+            if (matchData.currentOver.length > 0) {
+                firstInningsOvers.push([...matchData.currentOver]);
+            }
+            
+            matchData.currentInnings = 2;
+            matchData.runs = 0;
+            matchData.wickets = 0;
+            matchData.balls = 0;
+            matchData.currentOver = [];
+            matchData.allOvers = [];
+            matchData.firstInningsOvers = firstInningsOvers; // Store first innings overs
+
+            document.getElementById('currentTeamName').textContent = matchData.team2;
+            document.getElementById('targetInfo').style.display = 'block';
+            document.getElementById('targetScore').textContent = matchData.target + 1;
+            document.getElementById('editOversBtn').style.display = 'none'; // Hide edit button in second innings
+            
+            updateDisplay();
+        }
+
+        function showMatchComplete() {
+            // Calculate first innings overs
+            let firstInningsOversText = '';
+            if (matchData.currentInnings === 2) {
+                const firstInningsAllOvers = matchData.firstInningsOvers;
+                let totalBalls = 0;
+                firstInningsAllOvers.forEach(over => {
+                    over.forEach(ball => {
+                        if (ball.type === 'runs' || ball.type === 'wicket') {
+                            totalBalls++;
+                        }
+                    });
+                });
+                const completedOvers = Math.floor(totalBalls / 6);
+                const ballsInOver = totalBalls % 6;
+                firstInningsOversText = ballsInOver > 0 ? `${completedOvers}.${ballsInOver}` : completedOvers;
+            }
+
+            // Calculate second innings overs
+            const completedOvers = Math.floor(matchData.balls / 6);
+            const ballsInCurrentOver = matchData.balls % 6;
+            const secondInningsOversText = ballsInCurrentOver > 0 ? `${completedOvers}.${ballsInCurrentOver}` : completedOvers;
+
+            // Set team summaries
+            document.getElementById('team1Summary').textContent = matchData.team1;
+            document.getElementById('team2Summary').textContent = matchData.team2;
+
+            let result = '';
+            
+            if (matchData.currentInnings === 1) {
+                // First innings only (shouldn't normally happen, but handle it)
+                document.getElementById('team1Score').textContent = `${matchData.runs}/${matchData.wickets} (${secondInningsOversText} overs)`;
+                document.getElementById('team2Summary').style.display = 'none';
+                document.getElementById('team2Score').style.display = 'none';
+                result = `${matchData.team1} scored ${matchData.runs}/${matchData.wickets}`;
+            } else {
+                // Both innings complete
+                document.getElementById('team1Score').textContent = `${matchData.target}/${matchData.firstInningsWickets || 'All out'} (${firstInningsOversText} overs)`;
+                document.getElementById('team2Score').textContent = `${matchData.runs}/${matchData.wickets} (${secondInningsOversText} overs)`;
+                
+                if (matchData.runs > matchData.target) {
+                    const wicketsRemaining = '?'; // We don't track total wickets, so just show wickets lost
+                    result = `${matchData.team2} won by ${10 - matchData.wickets} wickets`;
+                } else if (matchData.runs === matchData.target) {
+                    result = `Match Tied!`;
+                } else {
+                    result = `${matchData.team1} won by ${matchData.target - matchData.runs} runs`;
+                }
+            }
+
+            document.getElementById('matchResult').textContent = result;
+            document.getElementById('matchCompleteModal').classList.add('active');
+        }
+
+        function updateDisplay() {
+            // Update score
+            document.getElementById('currentScore').textContent = 
+                `${matchData.runs}/${matchData.wickets}`;
+
+            // Update overs
+            const completedOvers = Math.floor(matchData.balls / 6);
+            const ballsInCurrentOver = matchData.balls % 6;
+            document.getElementById('oversCompleted').textContent = 
+                `${completedOvers}.${ballsInCurrentOver}`;
+
+            // Update target info
+            if (matchData.currentInnings === 2) {
+                const needed = matchData.target - matchData.runs + 1;
+                document.getElementById('runsNeeded').textContent = 
+                    needed > 0 ? needed : 0;
+                
+                const totalBalls = matchData.totalOvers * 6;
+                const ballsRemaining = totalBalls - matchData.balls;
+                document.getElementById('ballsRemaining').textContent = ballsRemaining;
+            }
+
+            // Update overs history
+            const oversHistoryDisplay = document.getElementById('oversHistoryDisplay');
+            oversHistoryDisplay.innerHTML = '';
+            
+            // Show first innings overs if in second innings
+            if (matchData.currentInnings === 2 && matchData.firstInningsOvers && matchData.firstInningsOvers.length > 0) {
+                document.getElementById('oversHistory').style.display = 'block';
+                
+                // Add first innings header
+                const firstInningsHeader = document.createElement('div');
+                firstInningsHeader.style.fontWeight = '700';
+                firstInningsHeader.style.color = '#667eea';
+                firstInningsHeader.style.marginBottom = '10px';
+                firstInningsHeader.textContent = `${matchData.team1} - First Innings`;
+                oversHistoryDisplay.appendChild(firstInningsHeader);
+                
+                matchData.firstInningsOvers.forEach((over, index) => {
+                    const overRow = createOverRow(over, index);
+                    oversHistoryDisplay.appendChild(overRow);
+                });
+                
+                // Add second innings header if there are completed overs
+                if (matchData.allOvers.length > 0) {
+                    const secondInningsHeader = document.createElement('div');
+                    secondInningsHeader.style.fontWeight = '700';
+                    secondInningsHeader.style.color = '#667eea';
+                    secondInningsHeader.style.marginTop = '15px';
+                    secondInningsHeader.style.marginBottom = '10px';
+                    secondInningsHeader.textContent = `${matchData.team2} - Second Innings`;
+                    oversHistoryDisplay.appendChild(secondInningsHeader);
+                    
+                    matchData.allOvers.forEach((over, index) => {
+                        const overRow = createOverRow(over, index);
+                        oversHistoryDisplay.appendChild(overRow);
+                    });
+                }
+            } else if (matchData.allOvers.length > 0) {
+                // First innings - show current innings overs
+                document.getElementById('oversHistory').style.display = 'block';
+                
+                matchData.allOvers.forEach((over, index) => {
+                    const overRow = createOverRow(over, index);
+                    oversHistoryDisplay.appendChild(overRow);
+                });
+            } else {
+                document.getElementById('oversHistory').style.display = 'none';
+            }
+
+            // Update current over display
+            const ballsDisplay = document.getElementById('ballsDisplay');
+            ballsDisplay.innerHTML = '';
+
+            matchData.currentOver.forEach((ball, index) => {
+                const ballDiv = document.createElement('div');
+                ballDiv.className = `ball ${ball.type}`;
+                
+                if (ball.type === 'wicket') {
+                    ballDiv.textContent = 'W';
+                } else if (ball.type === 'wide') {
+                    ballDiv.textContent = 'WD';
+                } else if (ball.type === 'noball') {
+                    ballDiv.textContent = `${ball.runsScored}NB`;
+                } else {
+                    ballDiv.textContent = ball.runs;
+                }
+
+                ballDiv.onclick = () => editBall(index);
+                ballsDisplay.appendChild(ballDiv);
+            });
+        }
+
+        function createOverRow(over, index) {
+            // Create a container for both label and card
+            const overContainer = document.createElement('div');
+            
+            // Calculate over total
+            let overTotal = 0;
+            over.forEach(ball => {
+                overTotal += ball.runs;
+            });
+            
+            // Create the over label outside the card with total runs
+            const overLabel = document.createElement('div');
+            overLabel.className = 'over-label-outside';
+            overLabel.textContent = `Over ${index + 1}: (${overTotal} runs)`;
+            
+            // Create the card
+            const overRow = document.createElement('div');
+            overRow.className = 'over-row';
+            
+            const overBalls = document.createElement('div');
+            overBalls.className = 'over-balls';
+            
+            over.forEach(ball => {
+                const ballDiv = document.createElement('div');
+                ballDiv.className = `ball ${ball.type}`;
+                
+                if (ball.type === 'wicket') {
+                    ballDiv.textContent = 'W';
+                } else if (ball.type === 'wide') {
+                    ballDiv.textContent = 'WD';
+                } else if (ball.type === 'noball') {
+                    ballDiv.textContent = `${ball.runsScored}NB`;
+                } else {
+                    ballDiv.textContent = ball.runs;
+                }
+                
+                overBalls.appendChild(ballDiv);
+            });
+            
+            overRow.appendChild(overBalls);
+            
+            // Add label and card to container
+            overContainer.appendChild(overLabel);
+            overContainer.appendChild(overRow);
+            
+            return overContainer;
+        }
+
+        function editBall(index) {
+            if (confirm('Remove this ball?')) {
+                const ball = matchData.currentOver[index];
+                matchData.runs -= ball.runs;
+                
+                if (ball.type === 'wicket') {
+                    matchData.wickets--;
+                }
+                
+                if (ball.type === 'runs' || ball.type === 'wicket') {
+                    matchData.balls--;
+                }
+
+                matchData.currentOver.splice(index, 1);
+                updateDisplay();
+            }
+        }
+
+        function resetMatch() {
+            document.getElementById('matchCompleteModal').classList.remove('active');
+            document.getElementById('scoringScreen').classList.remove('active');
+            document.getElementById('setupScreen').classList.add('active');
+            document.getElementById('targetInfo').style.display = 'none';
+            document.getElementById('oversHistory').style.display = 'none';
+            document.getElementById('editOversBtn').style.display = 'inline-block';
+            document.getElementById('superOverIndicator').style.display = 'none';
+
+            matchData = {
+                team1: '',
+                team2: '',
+                totalOvers: 0,
+                currentInnings: 1,
+                runs: 0,
+                wickets: 0,
+                balls: 0,
+                currentOver: [],
+                allOvers: [],
+                target: 0,
+                firstInningsRuns: 0,
+                firstInningsWickets: 0,
+                firstInningsOvers: [],
+                isSuperOver: false,
+                superOverTeam1Runs: 0,
+                superOverTeam2Runs: 0,
+                mainMatchTeam1Runs: 0,
+                mainMatchTeam2Runs: 0,
+                mainMatchTeam1Wickets: 0,
+                mainMatchTeam2Wickets: 0
+            };
+
+            document.getElementById('team1Name').value = '';
+            document.getElementById('team2Name').value = '';
+            document.getElementById('totalOvers').value = '';
+        }
+
+        function openTossModal() {
+            document.getElementById('tossResult').textContent = '';
+            document.getElementById('coin').classList.remove('flipping');
+            document.getElementById('coinTossModal').classList.add('active');
+        }
+
+        function closeTossModal() {
+            document.getElementById('coinTossModal').classList.remove('active');
+        }
+
+        function tossCoin() {
+            const coin = document.getElementById('coin');
+            const resultDiv = document.getElementById('tossResult');
+            
+            // Prevent multiple clicks while flipping
+            if (coin.classList.contains('flipping')) {
+                return;
+            }
+            
+            // Clear previous result
+            resultDiv.textContent = '';
+            
+            // Add flipping animation
+            coin.classList.add('flipping');
+            
+            // Randomly decide heads or tails
+            const result = Math.random() < 0.5 ? 'HEADS' : 'TAILS';
+            
+            // Show result after animation (1 second)
+            setTimeout(() => {
+                coin.classList.remove('flipping');
+                resultDiv.textContent = `🎯 ${result}!`;
+                
+                // Optional: Speak the result if available
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(result);
+                    utterance.rate = 0.9;
+                    speechSynthesis.speak(utterance);
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
